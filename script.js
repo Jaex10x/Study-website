@@ -686,7 +686,256 @@ function setupEventListeners() {
         mcOptions.style.display = e.target.value === 'flashcard' ? 'block' : 'none';
     });
 }
+// =====================================================
+// PDF EXPORT/IMPORT FUNCTIONS
+// =====================================================
 
+// Export to PDF
+async function exportToPDF() {
+    try {
+        // Check if jspdf is available, if not load it dynamically
+        if (typeof window.jspdf === 'undefined') {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Set title
+        doc.setFontSize(20);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Study Master - Flashcard Set', 20, 20);
+        
+        // Add date
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 30);
+        
+        // Add statistics
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Total Cards: ${studyData.cards.length}`, 20, 40);
+        
+        // Count by type
+        const flashcardCount = studyData.cards.filter(c => c.type === 'flashcard').length;
+        const mcCount = studyData.cards.filter(c => c.type === 'flashcard' && c.options).length;
+        const idCount = studyData.cards.filter(c => c.type === 'identification').length;
+        
+        doc.text(`Flashcards: ${flashcardCount}`, 20, 48);
+        doc.text(`Multiple Choice: ${mcCount}`, 20, 56);
+        doc.text(`Identification: ${idCount}`, 20, 64);
+        
+        // Add cards
+        let yPosition = 80;
+        doc.setFontSize(14);
+        doc.setTextColor(102, 126, 234);
+        doc.text('Cards:', 20, yPosition);
+        yPosition += 10;
+        
+        studyData.cards.forEach((card, index) => {
+            // Check if we need a new page
+            if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`${index + 1}. ${card.question}`, 20, yPosition);
+            yPosition += 7;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`   Answer: ${card.answer}`, 20, yPosition);
+            yPosition += 5;
+            
+            if (card.type === 'flashcard' && card.options) {
+                doc.setTextColor(150, 100, 200);
+                doc.text(`   Options: ${card.options.join(' • ')}`, 20, yPosition);
+                doc.setTextColor(40, 150, 40);
+                doc.text(`   Correct: ${card.options[card.correctOption]}`, 20, yPosition + 5);
+                yPosition += 10;
+            }
+            
+            doc.setTextColor(150, 150, 150);
+            doc.text(`   Type: ${card.type}`, 20, yPosition);
+            yPosition += 10;
+            
+            // Add separator line
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, yPosition - 3, 190, yPosition - 3);
+            yPosition += 5;
+        });
+        
+        // Save the PDF
+        doc.save('study-master-cards.pdf');
+        alert('PDF exported successfully!');
+        
+    } catch (error) {
+        console.error('Error exporting to PDF:', error);
+        alert('Error exporting to PDF. Please try again.');
+    }
+}
+
+// Import from PDF (using OCR or structured PDF)
+async function importFromPDF(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+        // Check if pdf.js is available
+        if (typeof window.pdfjsLib === 'undefined') {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js');
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = async function(e) {
+            try {
+                const typedarray = new Uint8Array(e.target.result);
+                
+                // Load the PDF
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                
+                // Extract text from all pages
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += pageText + '\n';
+                }
+                
+                // Parse the text to extract cards
+                const importedCards = parsePDFText(fullText);
+                
+                if (importedCards.length > 0) {
+                    // Ask user how to handle import
+                    const action = confirm(`Found ${importedCards.length} cards in PDF. Add to existing cards? Click OK to add, Cancel to replace.`);
+                    
+                    if (action) {
+                        // Add to existing cards
+                        importedCards.forEach(card => {
+                            card.id = Date.now() + Math.random();
+                            studyData.cards.push(card);
+                        });
+                        alert(`Added ${importedCards.length} cards to your collection!`);
+                    } else {
+                        // Replace existing cards
+                        studyData.cards = importedCards.map((card, index) => ({
+                            ...card,
+                            id: index + 1
+                        }));
+                        studyData.progress.currentCardIndex = 0;
+                        alert(`Replaced with ${importedCards.length} cards from PDF!`);
+                    }
+                    
+                    saveData();
+                    updateDisplay();
+                    updateProgress();
+                } else {
+                    alert('No cards could be extracted from the PDF. Make sure it contains study cards in a readable format.');
+                }
+                
+            } catch (error) {
+                console.error('Error reading PDF:', error);
+                alert('Error reading PDF file. Please make sure it\'s a valid PDF.');
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+        
+    } catch (error) {
+        console.error('Error loading PDF library:', error);
+        alert('Error loading PDF library. Please try again.');
+    }
+}
+
+// Helper function to parse PDF text into cards
+function parsePDFText(text) {
+    const cards = [];
+    const lines = text.split('\n');
+    
+    let currentCard = null;
+    
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        
+        // Look for question patterns
+        if (line.match(/^\d+\.\s+.+/) || line.match(/^Q[:：]\s*.+/i) || line.match(/^Question[:：]\s*.+/i)) {
+            // Save previous card if exists
+            if (currentCard && currentCard.question && currentCard.answer) {
+                cards.push(currentCard);
+            }
+            
+            // Start new card
+            currentCard = {
+                id: cards.length + 1,
+                question: line.replace(/^\d+\.\s*|^Q[:：]\s*|^Question[:：]\s*/i, '').trim(),
+                answer: '',
+                type: 'flashcard'
+            };
+        }
+        // Look for answer patterns
+        else if (currentCard && (line.match(/^A[:：]\s*.+/i) || line.match(/^Answer[:：]\s*.+/i))) {
+            currentCard.answer = line.replace(/^A[:：]\s*|^Answer[:：]\s*/i, '').trim();
+        }
+        // Look for options (multiple choice)
+        else if (currentCard && line.match(/^[a-dA-D][.)]\s*.+/)) {
+            if (!currentCard.options) {
+                currentCard.options = [];
+                currentCard.type = 'flashcard'; // multiple choice
+            }
+            currentCard.options.push(line.replace(/^[a-dA-D][.)]\s*/, '').trim());
+        }
+        // If line has "answer" in it
+        else if (currentCard && line.toLowerCase().includes('answer:')) {
+            currentCard.answer = line.split('answer:')[1].trim();
+        }
+    });
+    
+    // Add last card
+    if (currentCard && currentCard.question && currentCard.answer) {
+        cards.push(currentCard);
+    }
+    
+    return cards;
+}
+
+// Helper function to load scripts dynamically
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+function setupEventListeners() {
+    document.getElementById('import-file').addEventListener('change', importData);
+    
+    // Add PDF import listener
+    const pdfInput = document.getElementById('import-pdf-file');
+    if (pdfInput) {
+        pdfInput.addEventListener('change', importFromPDF);
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('card-modal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+    
+    // Show/hide multiple choice options based on type selection
+    document.getElementById('edit-type').addEventListener('change', function(e) {
+        const mcOptions = document.getElementById('mc-options-edit');
+        mcOptions.style.display = e.target.value === 'flashcard' ? 'block' : 'none';
+    });
+}
 // =====================================================
 // SIMPLE TEST
 // =====================================================

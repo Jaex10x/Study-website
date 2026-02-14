@@ -67,20 +67,22 @@
 
         <!-- Data Management Section -->
         <div class="data-management">
-            <h3>📊 Study Set Management</h3>
-            <div class="data-controls">
-                <div class="import-export">
-                    <button onclick="exportData()" class="btn secondary">Export Study Set</button>
-                    <input type="file" id="import-file" accept=".json" style="display: none;">
-                    <button onclick="document.getElementById('import-file').click()" class="btn secondary">Import Study Set</button>
-                </div>
-                <button onclick="addNewCard()" class="btn primary">➕ Add New Card</button>
-                <button onclick="resetProgress()" class="btn warning">Reset Progress</button>
-                <button onclick="deleteCurrentCard()" class="btn warning">Delete Card</button>
-                <button onclick="undoCard()" class="btn warning">Undo Last Card</button>
-            </div>
+    <h3>📊 Study Set Management</h3>
+    <div class="data-controls">
+        <div class="import-export">
+            <button onclick="exportData()" class="btn secondary">Export JSON</button>
+            <button onclick="exportToPDF()" class="btn secondary">📄 Export PDF</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+            <input type="file" id="import-pdf-file" accept=".pdf" style="display: none;">
+            <button onclick="document.getElementById('import-file').click()" class="btn secondary">Import JSON</button>
+            <button onclick="document.getElementById('import-pdf-file').click()" class="btn secondary">📄 Import PDF</button>
         </div>
+        <button onclick="addNewCard()" class="btn primary">➕ Add New Card</button>
+        <button onclick="toggleCardList()" class="btn secondary">📋 Manage Cards</button>
+        <button onclick="undoCard()" class="btn warning">↩️ Undo</button>
+        <button onclick="resetProgress()" class="btn warning">Reset Progress</button>
     </div>
+</div>
 
     <!-- Add/Edit Card Modal -->
     <div id="card-modal" class="modal">
