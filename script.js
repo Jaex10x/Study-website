@@ -5,6 +5,7 @@ const SUPABASE_URL = 'https://fhameymrtkygqoipftid.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Ai1CllplGqlEFxfRHJguRQ_n5Uy_xE1';
 
 // Create supabase client
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // =====================================================
 // STUDY DATA STRUCTURE
@@ -48,11 +49,16 @@ let isFlipped = false;
 let selectedOption = null;
 let currentUser = null;
 
+// Undo functionality variables
+let lastAction = null;
+let deletedCardBackup = null;
+let lastCardIndex = 0;
+let currentEditingCardId = null;
+
 // =====================================================
-// EXISTING FUNCTIONS (your original code)
+// INITIALIZATION
 // =====================================================
 
-// Initialize the application
 function init() {
     loadData();
     updateDisplay();
@@ -73,7 +79,10 @@ function saveData() {
     localStorage.setItem('studyMasterData', JSON.stringify(studyData));
 }
 
-// Update display based on current mode
+// =====================================================
+// DISPLAY FUNCTIONS
+// =====================================================
+
 function updateDisplay() {
     const currentCards = studyData.cards.filter(card => 
         currentMode === 'flashcards' ? card.type === 'flashcard' :
@@ -111,7 +120,6 @@ function updateDisplay() {
         `${currentIndex + 1} / ${currentCards.length}`;
 }
 
-// Update flashcard display
 function updateFlashcard(card) {
     document.getElementById('question-display').textContent = card.question;
     document.getElementById('answer-display').textContent = card.answer;
@@ -119,7 +127,6 @@ function updateFlashcard(card) {
     document.querySelector('.flashcard').classList.remove('flipped');
 }
 
-// Update multiple choice display
 function updateMultipleChoice(card) {
     document.getElementById('mc-question').textContent = card.question;
     const optionsContainer = document.getElementById('mc-options');
@@ -137,14 +144,16 @@ function updateMultipleChoice(card) {
     selectedOption = null;
 }
 
-// Update identification display
 function updateIdentification(card) {
     document.getElementById('id-question').textContent = card.question;
     document.getElementById('id-answer').value = '';
     document.getElementById('id-feedback').innerHTML = '';
 }
 
-// Flip card function
+// =====================================================
+// CARD INTERACTION FUNCTIONS
+// =====================================================
+
 function flipCard() {
     if (currentMode === 'flashcards') {
         isFlipped = !isFlipped;
@@ -152,7 +161,6 @@ function flipCard() {
     }
 }
 
-// Navigation functions
 function nextCard() {
     const currentCards = studyData.cards.filter(card => 
         currentMode === 'flashcards' ? card.type === 'flashcard' :
@@ -189,7 +197,10 @@ function previousCard() {
     saveData();
 }
 
-// Multiple choice functions
+// =====================================================
+// ANSWER CHECKING FUNCTIONS
+// =====================================================
+
 function selectOption(index) {
     selectedOption = index;
     document.querySelectorAll('.option').forEach((opt, i) => {
@@ -223,7 +234,6 @@ function checkMCAnswer() {
     saveData();
 }
 
-// Identification functions
 function checkIDAnswer() {
     const userAnswer = document.getElementById('id-answer').value.trim().toLowerCase();
     const currentCards = studyData.cards.filter(card => card.type === 'identification');
@@ -250,15 +260,16 @@ function nextIDQuestion() {
     nextCard();
 }
 
-// Mode switching
+// =====================================================
+// MODE SWITCHING
+// =====================================================
+
 function switchMode(mode) {
     currentMode = mode;
     
-    // Update active buttons
     document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
     
-    // Update active mode display
     document.querySelectorAll('.study-mode').forEach(mode => mode.classList.remove('active'));
     document.getElementById(`${mode}-mode`).classList.add('active');
     
@@ -266,7 +277,10 @@ function switchMode(mode) {
     updateDisplay();
 }
 
-// Progress tracking
+// =====================================================
+// PROGRESS TRACKING
+// =====================================================
+
 function updateProgress() {
     const totalCards = studyData.cards.length;
     const completedCards = studyData.progress.completedCards.length;
@@ -274,7 +288,10 @@ function updateProgress() {
     document.getElementById('progress').style.width = `${progress}%`;
 }
 
-// Data management functions
+// =====================================================
+// DATA MANAGEMENT
+// =====================================================
+
 function exportData() {
     const dataStr = JSON.stringify(studyData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -305,55 +322,42 @@ function importData(event) {
     reader.readAsText(file);
 }
 
-// Add new card
 function addNewCard() {
+    currentEditingCardId = null;
     document.getElementById('edit-question').value = '';
     document.getElementById('edit-answer').value = '';
     document.getElementById('edit-type').value = 'flashcard';
     document.getElementById('mc-options-edit').style.display = 'none';
     document.getElementById('card-modal').style.display = 'block';
 }
-// Function to delete the current card being edited
+
 function deleteCurrentCard() {
-    // Show confirmation dialog
     if (confirm('Are you sure you want to delete this card?')) {
         
-        // Get the current card based on the current mode and index
         const currentCards = studyData.cards.filter(card => 
             currentMode === 'flashcards' ? card.type === 'flashcard' :
             currentMode === 'multiple-choice' ? card.type === 'flashcard' && card.options : 
             card.type === 'identification'
         );
         
-        // Get the current card
         const currentIndex = studyData.progress.currentCardIndex;
         const currentCard = currentCards[currentIndex];
         
         if (currentCard) {
-            // Find and remove the card from the main cards array
             const cardIndex = studyData.cards.findIndex(c => c.id === currentCard.id);
             
             if (cardIndex !== -1) {
-                // Remove the card
                 studyData.cards.splice(cardIndex, 1);
                 
-                // Adjust current index if needed
                 if (studyData.cards.length === 0) {
-                    // No cards left
                     studyData.progress.currentCardIndex = 0;
                 } else if (cardIndex <= studyData.progress.currentCardIndex) {
-                    // If we deleted a card before or at current index, adjust
                     studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
                 }
                 
-                // Save changes
                 saveData();
-                
-                // Update the display
                 updateDisplay();
                 updateProgress();
-                
-                // Close modal if it's open
                 closeModal();
                 
                 alert('Card deleted successfully!');
@@ -361,111 +365,33 @@ function deleteCurrentCard() {
         }
     }
 }
-// =====================================================
-// UNDO FUNCTIONALITY
-// =====================================================
 
-// Function to undo the last card deletion
-function undoCard() {
-    if (!lastAction) {
-        alert('Nothing to undo!');
-        return;
-    }
-    
-    if (lastAction.type === 'delete' && deletedCardBackup) {
-        // Restore the deleted card
-        studyData.cards.splice(lastAction.index, 0, deletedCardBackup);
-        
-        // Restore the card index if needed
-        if (lastAction.index <= studyData.progress.currentCardIndex) {
-            studyData.progress.currentCardIndex++;
-        }
-        
-        // Clear the backup
-        deletedCardBackup = null;
-        lastAction = null;
-        
-        // Save and update
-        saveData();
-        updateDisplay();
-        updateProgress();
-        
-        alert('Card restored successfully!');
-    } 
-    else if (lastAction.type === 'add') {
-        // Undo last add
-        studyData.cards.pop();
-        
-        // Adjust index if needed
-        if (studyData.progress.currentCardIndex >= studyData.cards.length) {
-            studyData.progress.currentCardIndex = Math.max(0, studyData.cards.length - 1);
-        }
-        
-        lastAction = null;
-        
-        // Save and update
-        saveData();
-        updateDisplay();
-        updateProgress();
-        
-        alert('Last card addition undone!');
-    }
-    else if (lastAction.type === 'edit') {
-        // Restore the original card
-        if (lastAction.originalCard) {
-            studyData.cards[lastAction.index] = lastAction.originalCard;
-            
-            lastAction = null;
-            
-            // Save and update
-            saveData();
-            updateDisplay();
-            updateProgress();
-            
-            alert('Edit undone!');
-        }
-    }
-    else {
-        alert('Nothing to undo!');
-    }
-}
-
-// Modified deleteCardById function with undo support
 function deleteCardById(cardId) {
     if (confirm('Are you sure you want to delete this card?')) {
         
-        // Find the card index and backup the card
         const cardIndex = studyData.cards.findIndex(c => c.id === cardId);
         
         if (cardIndex !== -1) {
-            // Backup the card being deleted
             deletedCardBackup = {...studyData.cards[cardIndex]};
             
-            // Store action for undo
             lastAction = {
                 type: 'delete',
                 index: cardIndex
             };
             
-            // Store current index for potential restore
             lastCardIndex = studyData.progress.currentCardIndex;
             
-            // Remove the card
             studyData.cards.splice(cardIndex, 1);
             
-            // Adjust current index if needed
             if (studyData.cards.length === 0) {
                 studyData.progress.currentCardIndex = 0;
             } else if (cardIndex <= studyData.progress.currentCardIndex) {
                 studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
             }
             
-            // Save and update
             saveData();
             updateDisplay();
             updateProgress();
-            
-            // Close modal if it's open
             closeModal();
             
             alert('Card deleted! Use "Undo" to restore if needed.');
@@ -473,63 +399,6 @@ function deleteCardById(cardId) {
     }
 }
 
-// Modified deleteCurrentCard function with undo support
-function deleteCurrentCard() {
-    if (confirm('Are you sure you want to delete this card?')) {
-        
-        // Get the current card based on the current mode and index
-        const currentCards = studyData.cards.filter(card => 
-            currentMode === 'flashcards' ? card.type === 'flashcard' :
-            currentMode === 'multiple-choice' ? card.type === 'flashcard' && card.options : 
-            card.type === 'identification'
-        );
-        
-        // Get the current card
-        const currentIndex = studyData.progress.currentCardIndex;
-        const currentCard = currentCards[currentIndex];
-        
-        if (currentCard) {
-            // Find the card index in the main array
-            const cardIndex = studyData.cards.findIndex(c => c.id === currentCard.id);
-            
-            if (cardIndex !== -1) {
-                // Backup the card being deleted
-                deletedCardBackup = {...studyData.cards[cardIndex]};
-                
-                // Store action for undo
-                lastAction = {
-                    type: 'delete',
-                    index: cardIndex
-                };
-                
-                // Store current index
-                lastCardIndex = studyData.progress.currentCardIndex;
-                
-                // Remove the card
-                studyData.cards.splice(cardIndex, 1);
-                
-                // Adjust current index if needed
-                if (studyData.cards.length === 0) {
-                    studyData.progress.currentCardIndex = 0;
-                } else if (cardIndex <= studyData.progress.currentCardIndex) {
-                    studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
-                }
-                
-                // Save and update
-                saveData();
-                updateDisplay();
-                updateProgress();
-                
-                // Close modal if it's open
-                closeModal();
-                
-                alert('Card deleted! Use "Undo" to restore.');
-            }
-        }
-    }
-}
-
-// Modified saveCard function for add/edit with undo support
 function saveCard() {
     const question = document.getElementById('edit-question').value;
     const answer = document.getElementById('edit-answer').value;
@@ -544,15 +413,12 @@ function saveCard() {
         // EDIT existing card
         const cardIndex = studyData.cards.findIndex(c => c.id === currentEditingCardId);
         if (cardIndex !== -1) {
-            // Backup original for undo
             const originalCard = {...studyData.cards[cardIndex]};
             
-            // Update card
             studyData.cards[cardIndex].question = question;
             studyData.cards[cardIndex].answer = answer;
             studyData.cards[cardIndex].type = type;
             
-            // Handle options for multiple choice
             if (type === 'flashcard') {
                 const options = document.getElementById('edit-options').value.split(',').map(opt => opt.trim());
                 if (options.length >= 2) {
@@ -566,12 +432,13 @@ function saveCard() {
                 delete studyData.cards[cardIndex].correctOption;
             }
             
-            // Store action for undo
             lastAction = {
                 type: 'edit',
                 index: cardIndex,
                 originalCard: originalCard
             };
+            
+            alert('Card edited! Use "Undo" to revert if needed.');
         }
     } else {
         // ADD new card
@@ -592,57 +459,21 @@ function saveCard() {
         
         studyData.cards.push(newCard);
         
-        // Store action for undo
         lastAction = {
             type: 'add'
         };
-    }
-    
-    saveData();
-    closeModal();
-    updateDisplay();
-    showCardList(); // Refresh card list if it's visible
-    
-    if (lastAction.type === 'add') {
+        
         alert('Card added! Use "Undo" to remove if needed.');
-    } else if (lastAction.type === 'edit') {
-        alert('Card edited! Use "Undo" to revert if needed.');
-    }
-}
-
-// Save card
-function saveCard() {
-    const question = document.getElementById('edit-question').value;
-    const answer = document.getElementById('edit-answer').value;
-    const type = document.getElementById('edit-type').value;
-    
-    if (!question || !answer) {
-        alert('Please fill in all fields!');
-        return;
     }
     
-    const newCard = {
-        id: Date.now(),
-        question: question,
-        answer: answer,
-        type: type
-    };
-    
-    if (type === 'flashcard') {
-        const options = document.getElementById('edit-options').value.split(',').map(opt => opt.trim());
-        if (options.length >= 2) {
-            newCard.options = options;
-            newCard.correctOption = 0; // Default to first option
-        }
-    }
-    
-    studyData.cards.push(newCard);
     saveData();
     closeModal();
     updateDisplay();
+    if (document.getElementById('card-list-container')) {
+        showCardList();
+    }
 }
 
-// Reset progress
 function resetProgress() {
     if (confirm('Are you sure you want to reset all progress?')) {
         studyData.progress = {
@@ -659,7 +490,69 @@ function resetProgress() {
     }
 }
 
-// Helper functions
+// =====================================================
+// UNDO FUNCTIONALITY
+// =====================================================
+
+function undoCard() {
+    if (!lastAction) {
+        alert('Nothing to undo!');
+        return;
+    }
+    
+    if (lastAction.type === 'delete' && deletedCardBackup) {
+        studyData.cards.splice(lastAction.index, 0, deletedCardBackup);
+        
+        if (lastAction.index <= studyData.progress.currentCardIndex) {
+            studyData.progress.currentCardIndex++;
+        }
+        
+        deletedCardBackup = null;
+        lastAction = null;
+        
+        saveData();
+        updateDisplay();
+        updateProgress();
+        
+        alert('Card restored successfully!');
+    } 
+    else if (lastAction.type === 'add') {
+        studyData.cards.pop();
+        
+        if (studyData.progress.currentCardIndex >= studyData.cards.length) {
+            studyData.progress.currentCardIndex = Math.max(0, studyData.cards.length - 1);
+        }
+        
+        lastAction = null;
+        
+        saveData();
+        updateDisplay();
+        updateProgress();
+        
+        alert('Last card addition undone!');
+    }
+    else if (lastAction.type === 'edit') {
+        if (lastAction.originalCard) {
+            studyData.cards[lastAction.index] = lastAction.originalCard;
+            
+            lastAction = null;
+            
+            saveData();
+            updateDisplay();
+            updateProgress();
+            
+            alert('Edit undone!');
+        }
+    }
+    else {
+        alert('Nothing to undo!');
+    }
+}
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
 function showNoCardsMessage() {
     const modeDisplay = document.getElementById(`${currentMode}-mode`);
     modeDisplay.innerHTML = `<div class="no-cards">No cards available in this mode. Add some cards to start studying!</div>`;
@@ -669,123 +562,109 @@ function closeModal() {
     document.getElementById('card-modal').style.display = 'none';
 }
 
-function setupEventListeners() {
-    document.getElementById('import-file').addEventListener('change', importData);
+function toggleCardList() {
+    let cardListDiv = document.getElementById('card-list-container');
     
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('card-modal');
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    };
-    
-    // Show/hide multiple choice options based on type selection
-    document.getElementById('edit-type').addEventListener('change', function(e) {
-        const mcOptions = document.getElementById('mc-options-edit');
-        mcOptions.style.display = e.target.value === 'flashcard' ? 'block' : 'none';
-    });
-}
-// =====================================================
-// PDF EXPORT/IMPORT FUNCTIONS
-// =====================================================
-
-// Export to PDF
-async function exportToPDF() {
-    try {
-        // Check if jspdf is available, if not load it dynamically
-        if (typeof window.jspdf === 'undefined') {
-            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-        }
-        
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        // Set title
-        doc.setFontSize(20);
-        doc.setTextColor(40, 40, 40);
-        doc.text('Study Master - Flashcard Set', 20, 20);
-        
-        // Add date
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 30);
-        
-        // Add statistics
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Total Cards: ${studyData.cards.length}`, 20, 40);
-        
-        // Count by type
-        const flashcardCount = studyData.cards.filter(c => c.type === 'flashcard').length;
-        const mcCount = studyData.cards.filter(c => c.type === 'flashcard' && c.options).length;
-        const idCount = studyData.cards.filter(c => c.type === 'identification').length;
-        
-        doc.text(`Flashcards: ${flashcardCount}`, 20, 48);
-        doc.text(`Multiple Choice: ${mcCount}`, 20, 56);
-        doc.text(`Identification: ${idCount}`, 20, 64);
-        
-        // Add cards
-        let yPosition = 80;
-        doc.setFontSize(14);
-        doc.setTextColor(102, 126, 234);
-        doc.text('Cards:', 20, yPosition);
-        yPosition += 10;
-        
-        studyData.cards.forEach((card, index) => {
-            // Check if we need a new page
-            if (yPosition > 270) {
-                doc.addPage();
-                yPosition = 20;
-            }
-            
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`${index + 1}. ${card.question}`, 20, yPosition);
-            yPosition += 7;
-            
-            doc.setFontSize(10);
-            doc.setTextColor(80, 80, 80);
-            doc.text(`   Answer: ${card.answer}`, 20, yPosition);
-            yPosition += 5;
-            
-            if (card.type === 'flashcard' && card.options) {
-                doc.setTextColor(150, 100, 200);
-                doc.text(`   Options: ${card.options.join(' • ')}`, 20, yPosition);
-                doc.setTextColor(40, 150, 40);
-                doc.text(`   Correct: ${card.options[card.correctOption]}`, 20, yPosition + 5);
-                yPosition += 10;
-            }
-            
-            doc.setTextColor(150, 150, 150);
-            doc.text(`   Type: ${card.type}`, 20, yPosition);
-            yPosition += 10;
-            
-            // Add separator line
-            doc.setDrawColor(200, 200, 200);
-            doc.line(20, yPosition - 3, 190, yPosition - 3);
-            yPosition += 5;
-        });
-        
-        // Save the PDF
-        doc.save('study-master-cards.pdf');
-        alert('PDF exported successfully!');
-        
-    } catch (error) {
-        console.error('Error exporting to PDF:', error);
-        alert('Error exporting to PDF. Please try again.');
+    if (cardListDiv) {
+        cardListDiv.remove();
+    } else {
+        showCardList();
     }
 }
 
-// Import from PDF (using OCR or structured PDF)
+function showCardList() {
+    const existingList = document.getElementById('card-list-container');
+    if (existingList) existingList.remove();
+    
+    const container = document.createElement('div');
+    container.id = 'card-list-container';
+    container.className = 'card-list-container';
+    
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📋 All Cards (${studyData.cards.length})</h3>
+            <button onclick="toggleCardList()" class="btn secondary small">Close</button>
+        </div>
+        <div class="card-list">
+    `;
+    
+    studyData.cards.forEach((card, index) => {
+        const isCurrentCard = index === studyData.progress.currentCardIndex;
+        html += `
+            <div class="card-list-item ${isCurrentCard ? 'selected' : ''}" 
+                 onclick="jumpToCard(${card.id})">
+                <div class="card-info">
+                    <strong>${card.question.substring(0, 30)}${card.question.length > 30 ? '...' : ''}</strong>
+                    <span class="card-type">${card.type}</span>
+                </div>
+                <div>
+                    <button onclick="editCard(${card.id}); event.stopPropagation();" 
+                            class="btn small primary" style="margin-right: 5px;">✏️</button>
+                    <button onclick="deleteCardById(${card.id}); event.stopPropagation();" 
+                            class="btn small warning">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    document.querySelector('.data-management').appendChild(container);
+}
+
+function jumpToCard(cardId) {
+    const cardIndex = studyData.cards.findIndex(c => c.id === cardId);
+    if (cardIndex !== -1) {
+        studyData.progress.currentCardIndex = cardIndex;
+        updateDisplay();
+    }
+}
+
+function editCard(cardId) {
+    const card = studyData.cards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    currentEditingCardId = cardId;
+    document.getElementById('edit-question').value = card.question;
+    document.getElementById('edit-answer').value = card.answer;
+    document.getElementById('edit-type').value = card.type;
+    
+    if (card.type === 'flashcard' && card.options) {
+        document.getElementById('mc-options-edit').style.display = 'block';
+        document.getElementById('edit-options').value = card.options.join(', ');
+    } else {
+        document.getElementById('mc-options-edit').style.display = 'none';
+    }
+    
+    document.getElementById('card-modal').style.display = 'block';
+}
+
+// =====================================================
+// PDF FUNCTIONS
+// =====================================================
+
+// =====================================================
+// ENHANCED PDF IMPORT FUNCTION
+// =====================================================
+
 async function importFromPDF(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Show loading message
+    const loadingMsg = document.createElement('div');
+    loadingMsg.className = 'feedback';
+    loadingMsg.textContent = '📄 Processing PDF... Please wait.';
+    loadingMsg.style.background = '#fff3cd';
+    loadingMsg.style.color = '#856404';
+    document.querySelector('.data-management').prepend(loadingMsg);
+    
     try {
-        // Check if pdf.js is available
+        // Load PDF.js library if not available
         if (typeof window.pdfjsLib === 'undefined') {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js');
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
         }
         
         const reader = new FileReader();
@@ -796,22 +675,63 @@ async function importFromPDF(event) {
                 
                 // Load the PDF
                 const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                console.log(`PDF loaded with ${pdf.numPages} pages`);
                 
-                // Extract text from all pages
+                // Extract text from all pages with better formatting
                 let fullText = '';
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + '\n';
+                    
+                    // Group text items by their Y position to preserve line structure
+                    const lines = [];
+                    let lastY = null;
+                    let currentLine = '';
+                    
+                    // Sort items by vertical position
+                    const items = textContent.items.sort((a, b) => {
+                        if (Math.abs(a.transform[5] - b.transform[5]) < 5) {
+                            return a.transform[4] - b.transform[4];
+                        }
+                        return b.transform[5] - a.transform[5];
+                    });
+                    
+                    items.forEach(item => {
+                        const y = Math.round(item.transform[5]);
+                        if (lastY !== null && Math.abs(y - lastY) > 5) {
+                            lines.push(currentLine);
+                            currentLine = item.str;
+                        } else {
+                            currentLine += (currentLine ? ' ' : '') + item.str;
+                        }
+                        lastY = y;
+                    });
+                    
+                    if (currentLine) {
+                        lines.push(currentLine);
+                    }
+                    
+                    fullText += lines.join('\n') + '\n';
                 }
                 
-                // Parse the text to extract cards
-                const importedCards = parsePDFText(fullText);
+                console.log('Extracted text:', fullText);
+                
+                // Try multiple parsing methods
+                const importedCards = parsePDFTextEnhanced(fullText);
+                
+                // Remove loading message
+                loadingMsg.remove();
                 
                 if (importedCards.length > 0) {
-                    // Ask user how to handle import
-                    const action = confirm(`Found ${importedCards.length} cards in PDF. Add to existing cards? Click OK to add, Cancel to replace.`);
+                    // Show preview
+                    let previewText = `Found ${importedCards.length} cards:\n\n`;
+                    importedCards.slice(0, 3).forEach((card, i) => {
+                        previewText += `${i+1}. ${card.question.substring(0, 50)}${card.question.length > 50 ? '...' : ''}\n`;
+                    });
+                    
+                    const action = confirm(
+                        `${previewText}\n\nClick OK to ADD to existing cards.\nClick Cancel to REPLACE existing cards.`
+                    );
                     
                     if (action) {
                         // Add to existing cards
@@ -819,7 +739,7 @@ async function importFromPDF(event) {
                             card.id = Date.now() + Math.random();
                             studyData.cards.push(card);
                         });
-                        alert(`Added ${importedCards.length} cards to your collection!`);
+                        alert(`✅ Successfully added ${importedCards.length} cards to your collection!`);
                     } else {
                         // Replace existing cards
                         studyData.cards = importedCards.map((card, index) => ({
@@ -827,102 +747,256 @@ async function importFromPDF(event) {
                             id: index + 1
                         }));
                         studyData.progress.currentCardIndex = 0;
-                        alert(`Replaced with ${importedCards.length} cards from PDF!`);
+                        alert(`✅ Successfully imported ${importedCards.length} cards (replaced existing)!`);
                     }
                     
                     saveData();
                     updateDisplay();
                     updateProgress();
+                    
+                    if (document.getElementById('card-list-container')) {
+                        showCardList();
+                    }
                 } else {
-                    alert('No cards could be extracted from the PDF. Make sure it contains study cards in a readable format.');
+                    // Try alternative parsing with different patterns
+                    const simpleCards = parseSimpleTextFormat(fullText);
+                    
+                    if (simpleCards.length > 0) {
+                        const action = confirm(
+                            `Found ${simpleCards.length} cards using simple format.\n\nClick OK to import.`
+                        );
+                        
+                        if (action) {
+                            simpleCards.forEach(card => {
+                                card.id = Date.now() + Math.random();
+                                studyData.cards.push(card);
+                            });
+                            saveData();
+                            updateDisplay();
+                            updateProgress();
+                            alert(`✅ Imported ${simpleCards.length} cards!`);
+                        }
+                    } else {
+                        // Show the extracted text to help debug
+                        alert(`❌ No cards could be extracted.\n\nExtracted text starts with:\n${fullText.substring(0, 300)}...\n\nCheck console (F12) for full text.`);
+                    }
                 }
                 
             } catch (error) {
+                loadingMsg.remove();
                 console.error('Error reading PDF:', error);
-                alert('Error reading PDF file. Please make sure it\'s a valid PDF.');
+                alert('❌ Error reading PDF file: ' + error.message);
             }
         };
         
         reader.readAsArrayBuffer(file);
         
     } catch (error) {
+        loadingMsg.remove();
         console.error('Error loading PDF library:', error);
-        alert('Error loading PDF library. Please try again.');
+        alert('❌ Error loading PDF library. Please check your internet connection.');
     }
 }
 
-// Helper function to parse PDF text into cards
-function parsePDFText(text) {
+// =====================================================
+// ENHANCED PDF PARSING FUNCTION
+// =====================================================
+
+function parsePDFTextEnhanced(text) {
     const cards = [];
-    const lines = text.split('\n');
+    
+    // Split into lines and clean up
+    const lines = text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+    
+    console.log('Processing lines:', lines);
     
     let currentCard = null;
+    let collectingAnswer = false;
+    let answerText = '';
     
-    lines.forEach(line => {
-        line = line.trim();
-        if (!line) return;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         
-        // Look for question patterns
-        if (line.match(/^\d+\.\s+.+/) || line.match(/^Q[:：]\s*.+/i) || line.match(/^Question[:：]\s*.+/i)) {
-            // Save previous card if exists
+        // Pattern 1: Numbered questions (1. Question?)
+        if (line.match(/^\d+[.)]\s*.+\?/)) {
+            // Save previous card
             if (currentCard && currentCard.question && currentCard.answer) {
-                cards.push(currentCard);
+                cards.push({...currentCard});
             }
             
             // Start new card
             currentCard = {
-                id: cards.length + 1,
-                question: line.replace(/^\d+\.\s*|^Q[:：]\s*|^Question[:：]\s*/i, '').trim(),
+                question: line.replace(/^\d+[.)]\s*/, '').trim(),
                 answer: '',
                 type: 'flashcard'
             };
+            collectingAnswer = false;
         }
-        // Look for answer patterns
-        else if (currentCard && (line.match(/^A[:：]\s*.+/i) || line.match(/^Answer[:：]\s*.+/i))) {
-            currentCard.answer = line.replace(/^A[:：]\s*|^Answer[:：]\s*/i, '').trim();
-        }
-        // Look for options (multiple choice)
-        else if (currentCard && line.match(/^[a-dA-D][.)]\s*.+/)) {
-            if (!currentCard.options) {
-                currentCard.options = [];
-                currentCard.type = 'flashcard'; // multiple choice
+        
+        // Pattern 2: Question: format
+        else if (line.match(/^Question[:：]\s*.+/i)) {
+            if (currentCard && currentCard.question && currentCard.answer) {
+                cards.push({...currentCard});
             }
-            currentCard.options.push(line.replace(/^[a-dA-D][.)]\s*/, '').trim());
+            
+            currentCard = {
+                question: line.replace(/^Question[:：]\s*/i, '').trim(),
+                answer: '',
+                type: 'flashcard'
+            };
+            collectingAnswer = false;
         }
-        // If line has "answer" in it
-        else if (currentCard && line.toLowerCase().includes('answer:')) {
-            currentCard.answer = line.split('answer:')[1].trim();
+        
+        // Pattern 3: Q: format
+        else if (line.match(/^Q[:：]\s*.+/i)) {
+            if (currentCard && currentCard.question && currentCard.answer) {
+                cards.push({...currentCard});
+            }
+            
+            currentCard = {
+                question: line.replace(/^Q[:：]\s*/i, '').trim(),
+                answer: '',
+                type: 'flashcard'
+            };
+            collectingAnswer = false;
         }
-    });
+        
+        // Pattern 4: Any line ending with ? could be a question
+        else if (line.includes('?') && !currentCard) {
+            currentCard = {
+                question: line,
+                answer: '',
+                type: 'flashcard'
+            };
+            collectingAnswer = false;
+        }
+        
+        // Look for answer patterns
+        else if (currentCard) {
+            // Answer: format
+            if (line.match(/^Answer[:：]\s*.+/i)) {
+                currentCard.answer = line.replace(/^Answer[:：]\s*/i, '').trim();
+                collectingAnswer = false;
+                
+                // Card is complete
+                if (currentCard.question && currentCard.answer) {
+                    cards.push({...currentCard});
+                    currentCard = null;
+                }
+            }
+            
+            // A: format
+            else if (line.match(/^A[:：]\s*.+/i)) {
+                currentCard.answer = line.replace(/^A[:：]\s*/i, '').trim();
+                collectingAnswer = false;
+                
+                if (currentCard.question && currentCard.answer) {
+                    cards.push({...currentCard});
+                    currentCard = null;
+                }
+            }
+            
+            // If we're collecting a multi-line answer
+            else if (collectingAnswer) {
+                answerText += ' ' + line;
+                currentCard.answer = answerText;
+            }
+            
+            // If this line might be the answer (shorter line after question)
+            else if (currentCard.question && !currentCard.answer && line.length < 200) {
+                currentCard.answer = line;
+                
+                if (currentCard.question && currentCard.answer) {
+                    cards.push({...currentCard});
+                    currentCard = null;
+                }
+            }
+            
+            // Start collecting multi-line answer (if line starts with answer indicator)
+            else if (line.toLowerCase().includes('answer')) {
+                collectingAnswer = true;
+                answerText = line.replace(/.*answer[:：]\s*/i, '').trim();
+            }
+        }
+    }
     
-    // Add last card
+    // Don't forget the last card
     if (currentCard && currentCard.question && currentCard.answer) {
         cards.push(currentCard);
+    }
+    
+    // If no cards found with the above method, try the simple format
+    if (cards.length === 0) {
+        return parseSimpleTextFormat(text);
     }
     
     return cards;
 }
 
-// Helper function to load scripts dynamically
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
+// =====================================================
+// SIMPLE TEXT FORMAT PARSING
+// =====================================================
+
+function parseSimpleTextFormat(text) {
+    const cards = [];
+    const lines = text.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+    
+    for (let i = 0; i < lines.length - 1; i++) {
+        const currentLine = lines[i];
+        const nextLine = lines[i + 1];
+        
+        // Look for question/answer pairs
+        if (currentLine.includes('?') && !nextLine.includes('?')) {
+            cards.push({
+                question: currentLine,
+                answer: nextLine,
+                type: 'flashcard'
+            });
+            i++; // Skip the answer line
+        }
+        // Look for numbered items without question marks
+        else if (currentLine.match(/^\d+[.)]\s+.+/) && nextLine.length < 200) {
+            const question = currentLine.replace(/^\d+[.)]\s*/, '');
+            cards.push({
+                question: question,
+                answer: nextLine,
+                type: 'flashcard'
+            });
+            i++; // Skip the answer line
+        }
+    }
+    
+    return cards;
 }
+
+// =====================================================
+// DEBUG FUNCTION - Test PDF parsing with sample text
+// =====================================================
+
+function testPDFParsing() {
+    const sampleText = createSamplePDFContent();
+    const cards = parsePDFTextEnhanced(sampleText);
+    console.log('Test parsing result:', cards);
+    alert(`Test found ${cards.length} cards. Check console for details.`);
+    return cards;
+}
+
+// =====================================================
+// EVENT LISTENERS
+// =====================================================
+
 function setupEventListeners() {
     document.getElementById('import-file').addEventListener('change', importData);
     
-    // Add PDF import listener
     const pdfInput = document.getElementById('import-pdf-file');
     if (pdfInput) {
         pdfInput.addEventListener('change', importFromPDF);
     }
     
-    // Close modal when clicking outside
     window.onclick = function(event) {
         const modal = document.getElementById('card-modal');
         if (event.target === modal) {
@@ -930,16 +1004,16 @@ function setupEventListeners() {
         }
     };
     
-    // Show/hide multiple choice options based on type selection
     document.getElementById('edit-type').addEventListener('change', function(e) {
         const mcOptions = document.getElementById('mc-options-edit');
         mcOptions.style.display = e.target.value === 'flashcard' ? 'block' : 'none';
     });
 }
+
 // =====================================================
-// SIMPLE TEST
+// INITIALIZE
 // =====================================================
+
 console.log("Supabase client created:", supabase ? "Yes" : "No");
 
-// Initialize the application when page loads
 document.addEventListener('DOMContentLoaded', init);
