@@ -313,6 +313,302 @@ function addNewCard() {
     document.getElementById('mc-options-edit').style.display = 'none';
     document.getElementById('card-modal').style.display = 'block';
 }
+// Function to delete the current card being edited
+function deleteCurrentCard() {
+    // Show confirmation dialog
+    if (confirm('Are you sure you want to delete this card?')) {
+        
+        // Get the current card based on the current mode and index
+        const currentCards = studyData.cards.filter(card => 
+            currentMode === 'flashcards' ? card.type === 'flashcard' :
+            currentMode === 'multiple-choice' ? card.type === 'flashcard' && card.options : 
+            card.type === 'identification'
+        );
+        
+        // Get the current card
+        const currentIndex = studyData.progress.currentCardIndex;
+        const currentCard = currentCards[currentIndex];
+        
+        if (currentCard) {
+            // Find and remove the card from the main cards array
+            const cardIndex = studyData.cards.findIndex(c => c.id === currentCard.id);
+            
+            if (cardIndex !== -1) {
+                // Remove the card
+                studyData.cards.splice(cardIndex, 1);
+                
+                // Adjust current index if needed
+                if (studyData.cards.length === 0) {
+                    // No cards left
+                    studyData.progress.currentCardIndex = 0;
+                } else if (cardIndex <= studyData.progress.currentCardIndex) {
+                    // If we deleted a card before or at current index, adjust
+                    studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
+                }
+                
+                // Save changes
+                saveData();
+                
+                // Update the display
+                updateDisplay();
+                updateProgress();
+                
+                // Close modal if it's open
+                closeModal();
+                
+                alert('Card deleted successfully!');
+            }
+        }
+    }
+}
+// =====================================================
+// UNDO FUNCTIONALITY
+// =====================================================
+
+// Function to undo the last card deletion
+function undoCard() {
+    if (!lastAction) {
+        alert('Nothing to undo!');
+        return;
+    }
+    
+    if (lastAction.type === 'delete' && deletedCardBackup) {
+        // Restore the deleted card
+        studyData.cards.splice(lastAction.index, 0, deletedCardBackup);
+        
+        // Restore the card index if needed
+        if (lastAction.index <= studyData.progress.currentCardIndex) {
+            studyData.progress.currentCardIndex++;
+        }
+        
+        // Clear the backup
+        deletedCardBackup = null;
+        lastAction = null;
+        
+        // Save and update
+        saveData();
+        updateDisplay();
+        updateProgress();
+        
+        alert('Card restored successfully!');
+    } 
+    else if (lastAction.type === 'add') {
+        // Undo last add
+        studyData.cards.pop();
+        
+        // Adjust index if needed
+        if (studyData.progress.currentCardIndex >= studyData.cards.length) {
+            studyData.progress.currentCardIndex = Math.max(0, studyData.cards.length - 1);
+        }
+        
+        lastAction = null;
+        
+        // Save and update
+        saveData();
+        updateDisplay();
+        updateProgress();
+        
+        alert('Last card addition undone!');
+    }
+    else if (lastAction.type === 'edit') {
+        // Restore the original card
+        if (lastAction.originalCard) {
+            studyData.cards[lastAction.index] = lastAction.originalCard;
+            
+            lastAction = null;
+            
+            // Save and update
+            saveData();
+            updateDisplay();
+            updateProgress();
+            
+            alert('Edit undone!');
+        }
+    }
+    else {
+        alert('Nothing to undo!');
+    }
+}
+
+// Modified deleteCardById function with undo support
+function deleteCardById(cardId) {
+    if (confirm('Are you sure you want to delete this card?')) {
+        
+        // Find the card index and backup the card
+        const cardIndex = studyData.cards.findIndex(c => c.id === cardId);
+        
+        if (cardIndex !== -1) {
+            // Backup the card being deleted
+            deletedCardBackup = {...studyData.cards[cardIndex]};
+            
+            // Store action for undo
+            lastAction = {
+                type: 'delete',
+                index: cardIndex
+            };
+            
+            // Store current index for potential restore
+            lastCardIndex = studyData.progress.currentCardIndex;
+            
+            // Remove the card
+            studyData.cards.splice(cardIndex, 1);
+            
+            // Adjust current index if needed
+            if (studyData.cards.length === 0) {
+                studyData.progress.currentCardIndex = 0;
+            } else if (cardIndex <= studyData.progress.currentCardIndex) {
+                studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
+            }
+            
+            // Save and update
+            saveData();
+            updateDisplay();
+            updateProgress();
+            
+            // Close modal if it's open
+            closeModal();
+            
+            alert('Card deleted! Use "Undo" to restore if needed.');
+        }
+    }
+}
+
+// Modified deleteCurrentCard function with undo support
+function deleteCurrentCard() {
+    if (confirm('Are you sure you want to delete this card?')) {
+        
+        // Get the current card based on the current mode and index
+        const currentCards = studyData.cards.filter(card => 
+            currentMode === 'flashcards' ? card.type === 'flashcard' :
+            currentMode === 'multiple-choice' ? card.type === 'flashcard' && card.options : 
+            card.type === 'identification'
+        );
+        
+        // Get the current card
+        const currentIndex = studyData.progress.currentCardIndex;
+        const currentCard = currentCards[currentIndex];
+        
+        if (currentCard) {
+            // Find the card index in the main array
+            const cardIndex = studyData.cards.findIndex(c => c.id === currentCard.id);
+            
+            if (cardIndex !== -1) {
+                // Backup the card being deleted
+                deletedCardBackup = {...studyData.cards[cardIndex]};
+                
+                // Store action for undo
+                lastAction = {
+                    type: 'delete',
+                    index: cardIndex
+                };
+                
+                // Store current index
+                lastCardIndex = studyData.progress.currentCardIndex;
+                
+                // Remove the card
+                studyData.cards.splice(cardIndex, 1);
+                
+                // Adjust current index if needed
+                if (studyData.cards.length === 0) {
+                    studyData.progress.currentCardIndex = 0;
+                } else if (cardIndex <= studyData.progress.currentCardIndex) {
+                    studyData.progress.currentCardIndex = Math.max(0, studyData.progress.currentCardIndex - 1);
+                }
+                
+                // Save and update
+                saveData();
+                updateDisplay();
+                updateProgress();
+                
+                // Close modal if it's open
+                closeModal();
+                
+                alert('Card deleted! Use "Undo" to restore.');
+            }
+        }
+    }
+}
+
+// Modified saveCard function for add/edit with undo support
+function saveCard() {
+    const question = document.getElementById('edit-question').value;
+    const answer = document.getElementById('edit-answer').value;
+    const type = document.getElementById('edit-type').value;
+    
+    if (!question || !answer) {
+        alert('Please fill in all fields!');
+        return;
+    }
+    
+    if (currentEditingCardId) {
+        // EDIT existing card
+        const cardIndex = studyData.cards.findIndex(c => c.id === currentEditingCardId);
+        if (cardIndex !== -1) {
+            // Backup original for undo
+            const originalCard = {...studyData.cards[cardIndex]};
+            
+            // Update card
+            studyData.cards[cardIndex].question = question;
+            studyData.cards[cardIndex].answer = answer;
+            studyData.cards[cardIndex].type = type;
+            
+            // Handle options for multiple choice
+            if (type === 'flashcard') {
+                const options = document.getElementById('edit-options').value.split(',').map(opt => opt.trim());
+                if (options.length >= 2) {
+                    studyData.cards[cardIndex].options = options;
+                    if (!studyData.cards[cardIndex].correctOption) {
+                        studyData.cards[cardIndex].correctOption = 0;
+                    }
+                }
+            } else {
+                delete studyData.cards[cardIndex].options;
+                delete studyData.cards[cardIndex].correctOption;
+            }
+            
+            // Store action for undo
+            lastAction = {
+                type: 'edit',
+                index: cardIndex,
+                originalCard: originalCard
+            };
+        }
+    } else {
+        // ADD new card
+        const newCard = {
+            id: Date.now(),
+            question: question,
+            answer: answer,
+            type: type
+        };
+        
+        if (type === 'flashcard') {
+            const options = document.getElementById('edit-options').value.split(',').map(opt => opt.trim());
+            if (options.length >= 2) {
+                newCard.options = options;
+                newCard.correctOption = 0;
+            }
+        }
+        
+        studyData.cards.push(newCard);
+        
+        // Store action for undo
+        lastAction = {
+            type: 'add'
+        };
+    }
+    
+    saveData();
+    closeModal();
+    updateDisplay();
+    showCardList(); // Refresh card list if it's visible
+    
+    if (lastAction.type === 'add') {
+        alert('Card added! Use "Undo" to remove if needed.');
+    } else if (lastAction.type === 'edit') {
+        alert('Card edited! Use "Undo" to revert if needed.');
+    }
+}
 
 // Save card
 function saveCard() {
