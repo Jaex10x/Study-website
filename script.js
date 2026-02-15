@@ -1,3 +1,4 @@
+
 let studyData = {
     cards: [
         {question: "What is JavaScript?", answer: "Programming language"},
