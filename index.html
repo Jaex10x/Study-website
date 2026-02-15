@@ -7,19 +7,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div class="container">
 
 <header>
 <h1>📚 Study Master</h1>
-<div class="progress-bar">
-<div class="progress" id="progress"></div>
-</div>
 </header>
 
 <div class="study-mode-selector">
-<button class="mode-btn active" onclick="switchMode('flashcards')">Flashcards</button>
-<button class="mode-btn" onclick="switchMode('multiple-choice')">Multiple Choice</button>
-<button class="mode-btn" onclick="switchMode('identification')">Identification</button>
+<button class="mode-btn active" onclick="switchMode('flashcards', this)">Flashcards</button>
+<button class="mode-btn" onclick="switchMode('multiple-choice', this)">Multiple Choice</button>
+<button class="mode-btn" onclick="switchMode('identification', this)">Identification</button>
 </div>
 
 <!-- FLASHCARD -->
@@ -34,6 +32,7 @@
 </div>
 </div>
 </div>
+
 <div class="card-controls">
 <button onclick="previousCard()" class="btn">Previous</button>
 <span id="card-counter"></span>
@@ -47,7 +46,7 @@
 <h3 id="mc-question"></h3>
 <div id="mc-options"></div>
 <div id="mc-feedback" class="feedback"></div>
-<button onclick="checkMCAnswer()" class="btn">Submit</button>
+<button onclick="checkMCAnswer()" class="btn primary">Submit</button>
 <button onclick="nextCard()" class="btn">Next</button>
 </div>
 </div>
@@ -56,19 +55,18 @@
 <div id="identification-mode" class="study-mode">
 <div class="question-box">
 <h3 id="id-question"></h3>
-<input type="text" id="id-answer">
+<input type="text" id="id-answer" placeholder="Type your answer">
 <div id="id-feedback" class="feedback"></div>
-<button onclick="checkIDAnswer()" class="btn">Submit</button>
+<button onclick="checkIDAnswer()" class="btn primary">Submit</button>
 <button onclick="nextCard()" class="btn">Next</button>
 </div>
 </div>
 
 <!-- CONTROLS -->
 <div class="data-management">
-<button onclick="addNewCard()" class="btn primary">➕ Add New Card</button>
-<button onclick="resetProgress()" class="btn warning">Reset</button>
-<button onclick="deleteCurrentCard()" class="btn warning">🗑 Delete Card</button>
-
+<button onclick="addNewCard()" class="btn primary">➕ Add Question</button>
+<button onclick="deleteCurrentCard()" class="btn danger">🗑 Delete</button>
+<button onclick="resetProgress()" class="btn secondary">Reset</button>
 </div>
 
 </div>
@@ -77,17 +75,9 @@
 <div id="card-modal" class="modal">
 <div class="modal-content">
 <span class="close" onclick="closeModal()">&times;</span>
-<h3>Add Card</h3>
+<h3>Add Question</h3>
 <input type="text" id="edit-question" placeholder="Question">
 <input type="text" id="edit-answer" placeholder="Answer">
-<select id="edit-type">
-<option value="flashcards">Flashcard</option>
-<option value="multiple-choice">Multiple Choice</option>
-<option value="identification">Identification</option>
-</select>
-<div id="mc-options-edit" style="display:none;">
-<input type="text" id="edit-options" placeholder="Option1, Option2, Option3">
-</div>
 <button onclick="saveCard()" class="btn primary">Save</button>
 </div>
 </div>

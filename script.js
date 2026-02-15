@@ -1,10 +1,12 @@
+const SUPABASE_URL = "https://fhameymrtkygqoipftid.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Ai1CllplGqlEFxfRHJguRQ_n5Uy_xE1"; 
+
+
 let studyData={
 cards:[
-{question:"What is JavaScript?",answer:"Programming language",type:"flashcards"},
-{question:"CSS stands for?",answer:"Cascading Style Sheets",type:"multiple-choice",
-options:["Cascading Style Sheets","Computer Style","Creative Style"],
-correctOption:0},
-{question:"HTML means?",answer:"Hyper Text Markup Language",type:"identification"}
+{question:"What is JavaScript?",answer:"Programming language"},
+{question:"CSS stands for?",answer:"Cascading Style Sheets"},
+{question:"HTML means?",answer:"Hyper Text Markup Language"}
 ],
 currentIndex:0
 };
@@ -14,37 +16,51 @@ let selectedOption=null;
 
 document.addEventListener("DOMContentLoaded",updateDisplay);
 
-function getFiltered(){
-return studyData.cards.filter(c=>c.type===currentMode);
+/* MODE SWITCH */
+function switchMode(mode,btn){
+currentMode=mode;
+studyData.currentIndex=0;
+document.querySelectorAll(".mode-btn").forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+updateDisplay();
 }
 
+/* DISPLAY */
 function updateDisplay(){
+
 document.querySelectorAll(".study-mode").forEach(m=>m.classList.remove("active"));
 document.getElementById(currentMode+"-mode").classList.add("active");
 
-let cards=getFiltered();
-if(cards.length===0){
-document.getElementById("question-display").textContent="No cards yet";
+if(studyData.cards.length===0){
+document.getElementById("question-display").textContent="No questions yet";
 return;
 }
 
-if(studyData.currentIndex>=cards.length) studyData.currentIndex=0;
+if(studyData.currentIndex>=studyData.cards.length)
+studyData.currentIndex=0;
 
-let card=cards[studyData.currentIndex];
+let card=studyData.cards[studyData.currentIndex];
 
-let counter=document.getElementById("card-counter");
-if(counter) counter.textContent=(studyData.currentIndex+1)+" / "+cards.length;
+document.getElementById("card-counter").textContent=
+(studyData.currentIndex+1)+" / "+studyData.cards.length;
 
+/* FLASHCARD */
 if(currentMode==="flashcards"){
+document.querySelector(".flashcard").classList.remove("flipped");
 document.getElementById("question-display").textContent=card.question;
 document.getElementById("answer-display").textContent=card.answer;
 }
 
+/* MULTIPLE CHOICE */
 if(currentMode==="multiple-choice"){
 document.getElementById("mc-question").textContent=card.question;
 let box=document.getElementById("mc-options");
 box.innerHTML="";
-card.options.forEach((opt,i)=>{
+selectedOption=null;
+
+let options=generateOptions(card.answer);
+
+options.forEach((opt,i)=>{
 let div=document.createElement("div");
 div.textContent=opt;
 div.className="option";
@@ -58,56 +74,63 @@ box.appendChild(div);
 document.getElementById("mc-feedback").textContent="";
 }
 
+/* IDENTIFICATION */
 if(currentMode==="identification"){
 document.getElementById("id-question").textContent=card.question;
-document.getElementById("id-feedback").textContent="";
 document.getElementById("id-answer").value="";
+document.getElementById("id-feedback").textContent="";
 }
 }
 
+/* GENERATE MC OPTIONS */
+function generateOptions(correct){
+let fake=[
+"Computer System","Programming Tool","Web Language",
+"Markup Tool","Data Format","Software Code"
+];
+
+let options=[correct];
+while(options.length<4){
+let r=fake[Math.floor(Math.random()*fake.length)];
+if(!options.includes(r)) options.push(r);
+}
+return options.sort(()=>Math.random()-0.5);
+}
+
+/* NAVIGATION */
 function nextCard(){
-let total=getFiltered().length;
-if(total===0)return;
-studyData.currentIndex=(studyData.currentIndex+1)%total;
+studyData.currentIndex=(studyData.currentIndex+1)%studyData.cards.length;
 updateDisplay();
 }
 
 function previousCard(){
-let total=getFiltered().length;
-if(total===0)return;
-studyData.currentIndex=(studyData.currentIndex-1+total)%total;
+studyData.currentIndex=
+(studyData.currentIndex-1+studyData.cards.length)%studyData.cards.length;
 updateDisplay();
 }
 
-function switchMode(mode){
-currentMode=mode;
-studyData.currentIndex=0;
-document.querySelectorAll(".mode-btn").forEach(b=>b.classList.remove("active"));
-event.target.classList.add("active");
-updateDisplay();
-}
-
-function flipCard(){
-document.querySelector(".flashcard").classList.toggle("flipped");
-}
-
+/* CHECK ANSWERS */
 function checkMCAnswer(){
-let card=getFiltered()[studyData.currentIndex];
-let feedback=document.getElementById("mc-feedback");
-if(selectedOption===card.correctOption){
-feedback.textContent="✅ Correct!";
-}else{
-feedback.textContent="❌ Wrong!";
-}
+let correct=studyData.cards[studyData.currentIndex].answer;
+let chosen=document.querySelector(".option.selected");
+if(!chosen)return;
+document.getElementById("mc-feedback").textContent=
+chosen.textContent===correct?"✅ Correct!":"❌ Wrong!";
 }
 
 function checkIDAnswer(){
 let input=document.getElementById("id-answer").value.toLowerCase();
-let card=getFiltered()[studyData.currentIndex];
-let feedback=document.getElementById("id-feedback");
-feedback.textContent=input===card.answer.toLowerCase()?"✅ Correct!":"❌ Wrong!";
+let correct=studyData.cards[studyData.currentIndex].answer.toLowerCase();
+document.getElementById("id-feedback").textContent=
+input===correct?"✅ Correct!":"❌ Wrong!";
 }
 
+/* FLIP */
+function flipCard(){
+document.querySelector(".flashcard").classList.toggle("flipped");
+}
+
+/* MODAL */
 function addNewCard(){
 document.getElementById("card-modal").style.display="block";
 }
@@ -116,40 +139,20 @@ function closeModal(){
 document.getElementById("card-modal").style.display="none";
 }
 
-document.getElementById("edit-type").addEventListener("change",e=>{
-document.getElementById("mc-options-edit").style.display=
-e.target.value==="multiple-choice"?"block":"none";
-});
-
 function saveCard(){
 let q=document.getElementById("edit-question").value;
 let a=document.getElementById("edit-answer").value;
-let t=document.getElementById("edit-type").value;
-let opt=document.getElementById("edit-options").value;
-
 if(!q||!a)return alert("Fill all fields");
 
-let newCard={question:q,answer:a,type:t};
-
-if(t==="multiple-choice"){
-let arr=opt.split(",").map(x=>x.trim());
-if(arr.length<2)return alert("Need 2+ options");
-newCard.options=arr;
-newCard.correctOption=0;
-}
-
-studyData.cards.push(newCard);
+studyData.cards.push({question:q,answer:a});
 closeModal();
 updateDisplay();
 }
 
+/* DELETE */
 function deleteCurrentCard(){
-let cards=getFiltered();
-if(cards.length===0)return;
-
-let globalIndex=studyData.cards.indexOf(cards[studyData.currentIndex]);
-studyData.cards.splice(globalIndex,1);
-
+if(studyData.cards.length===0)return;
+studyData.cards.splice(studyData.currentIndex,1);
 studyData.currentIndex=0;
 updateDisplay();
 }
