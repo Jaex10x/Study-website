@@ -1,7 +1,3 @@
-const SUPABASE_URL = "https://fhameymrtkygqoipftid.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Ai1CllplGqlEFxfRHJguRQ_n5Uy_xE1"; 
-
-
 let studyData={
 cards:[
 {question:"What is JavaScript?",answer:"Programming language"},
