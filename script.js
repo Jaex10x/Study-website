@@ -16,13 +16,19 @@ function loadFromStorage() {
             studyData.cards = parsed.cards || [];
             studyData.score = parsed.score || 0;
             studyData.totalAttempts = parsed.totalAttempts || 0;
-            console.log('Loaded from storage:', studyData.cards.length, 'cards');
+            console.log('✅ Loaded from storage:', studyData.cards.length, 'cards');
+            
+            // Only set defaults if there are absolutely no cards
+            if (studyData.cards.length === 0) {
+                console.log('No cards found, loading defaults');
+                setDefaultCards();
+            }
         } catch (e) {
             console.error('Failed to load from storage', e);
             setDefaultCards();
         }
     } else {
-        console.log('No saved data, using defaults');
+        console.log('No saved data found, loading defaults');
         setDefaultCards();
     }
 }
@@ -35,6 +41,7 @@ function setDefaultCards() {
         {question: "HTML means?", answer: "Hyper Text Markup Language"}
     ];
     saveToStorage(); // Save defaults to storage
+    console.log('📚 Default cards loaded');
 }
 
 // Save data to localStorage
@@ -44,7 +51,7 @@ function saveToStorage() {
         score: studyData.score,
         totalAttempts: studyData.totalAttempts
     }));
-    console.log('Saved to storage:', studyData.cards.length, 'cards');
+    console.log('💾 Saved to storage:', studyData.cards.length, 'cards');
 }
 
 // Load data when page starts
@@ -57,6 +64,7 @@ let previousState = null;
 document.addEventListener("DOMContentLoaded", function() {
     updateDisplay();
     updateScore();
+    console.log('📖 Page loaded with', studyData.cards.length, 'cards');
 });
 
 /* MODE SWITCH */
@@ -233,7 +241,7 @@ function checkMCAnswer() {
     
     studyData.totalAttempts++;
     updateScore();
-    saveToStorage(); // Save after scoring
+    saveToStorage();
 }
 
 function checkIDAnswer() {
@@ -258,7 +266,7 @@ function checkIDAnswer() {
     
     studyData.totalAttempts++;
     updateScore();
-    saveToStorage(); // Save after scoring
+    saveToStorage();
 }
 
 /* SCORE FUNCTIONS */
@@ -301,14 +309,14 @@ function saveCard() {
     // Add new card
     studyData.cards.push({question: q, answer: a});
     
-    // CRITICAL: Save to localStorage immediately
+    // Save to localStorage immediately
     saveToStorage();
     
     closeModal();
     updateDisplay();
     showUndoMessage("➕ Question added!");
     
-    console.log('Card added. Total cards:', studyData.cards.length);
+    console.log('✅ Card added. Total cards:', studyData.cards.length);
 }
 
 /* FIXED: Delete card and persist to storage */
@@ -327,91 +335,44 @@ function deleteCurrentCard() {
         studyData.currentIndex = 0;
     }
     
-    // CRITICAL: Save to localStorage immediately
+    // Save to localStorage immediately
     saveToStorage();
     
     updateDisplay();
     showUndoMessage("🗑️ Card deleted!");
     
-    console.log('Card deleted. Total cards:', studyData.cards.length);
+    console.log('✅ Card deleted. Total cards:', studyData.cards.length);
 }
 
-/* FIXED: Reset progress but keep cards */
+/* Reset progress but keep cards */
 function resetProgress() {
     studyData.currentIndex = 0;
     studyData.score = 0;
     studyData.totalAttempts = 0;
     previousState = null;
     
-    // Save to localStorage
     saveToStorage();
-    
     updateDisplay();
     updateScore();
     showUndoMessage("🔄 Progress reset!");
 }
 
-/* NEW: Clear all cards (optional) */
-function clearAllCards() {
-    if (confirm('Are you sure you want to delete ALL cards?')) {
-        studyData.cards = [];
-        studyData.currentIndex = 0;
-        studyData.score = 0;
-        studyData.totalAttempts = 0;
-        
-        // Save to localStorage
-        saveToStorage();
-        
+/* NEW: View all saved cards in console (for debugging) */
+function viewAllCards() {
+    console.log('📚 All saved cards:', studyData.cards);
+    alert(`You have ${studyData.cards.length} cards saved. Check console for details.`);
+}
+
+/* NEW: Clear localStorage completely (use with caution) */
+function clearAllData() {
+    if (confirm('⚠️ This will delete ALL your saved cards and progress. Are you sure?')) {
+        localStorage.removeItem('studyMasterData');
+        setDefaultCards();
         updateDisplay();
         updateScore();
-        showUndoMessage("🗑️ All cards deleted!");
+        console.log('🗑️ All data cleared');
+        showUndoMessage('🗑️ All data cleared');
     }
-}
-
-/* NEW: Export cards to file (backup) */
-function exportCards() {
-    const dataStr = JSON.stringify(studyData.cards, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = 'study-cards-backup.json';
-    
-    let linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-}
-
-/* NEW: Import cards from file */
-function importCards() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = e => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = event => {
-            try {
-                const importedCards = JSON.parse(event.target.result);
-                if (Array.isArray(importedCards)) {
-                    studyData.cards = importedCards;
-                    studyData.currentIndex = 0;
-                    saveToStorage();
-                    updateDisplay();
-                    showUndoMessage("📥 Cards imported!");
-                } else {
-                    alert('Invalid file format');
-                }
-            } catch (error) {
-                alert('Error importing file');
-            }
-        };
-        
-        reader.readAsText(file);
-    };
-    
-    input.click();
 }
 
 // Save before page unload
@@ -419,5 +380,8 @@ window.addEventListener('beforeunload', function() {
     saveToStorage();
 });
 
-// Check storage on load
-console.log('Initial cards:', studyData.cards.length);
+// Add debug function to window for console access
+window.debugStudyData = function() {
+    console.log('Current studyData:', studyData);
+    console.log('LocalStorage:', localStorage.getItem('studyMasterData'));
+};
