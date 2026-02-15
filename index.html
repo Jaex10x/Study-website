@@ -1,85 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Study Master</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Master</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
 
-<header>
-<h1>📚 Study Master</h1>
-</header>
+    <header>
+        <h1>📚 Study Master</h1>
+    </header>
 
-<div class="study-mode-selector">
-<button class="mode-btn active" onclick="switchMode('flashcards', this)">Flashcards</button>
-<button class="mode-btn" onclick="switchMode('multiple-choice', this)">Multiple Choice</button>
-<button class="mode-btn" onclick="switchMode('identification', this)">Identification</button>
-</div>
+    <div class="score-container">
+        <div class="score-box">
+            <span class="score-label">Score:</span>
+            <span id="score-display">0</span>
+            <span class="total-label">/</span>
+            <span id="total-attempts">0</span>
+        </div>
+        <div class="score-percentage">
+            <span id="percentage-display">0%</span>
+        </div>
+    </div>
 
-<!-- FLASHCARD -->
-<div id="flashcards-mode" class="study-mode active">
-<div class="card-container">
-<div class="flashcard" onclick="flipCard()">
-<div class="card-front">
-<h3 id="question-display"></h3>
-</div>
-<div class="card-back">
-<h3 id="answer-display"></h3>
-</div>
-</div>
-</div>
+    <div class="study-mode-selector">
+        <button class="mode-btn active" onclick="switchMode('flashcards', this)">Flashcards</button>
+        <button class="mode-btn" onclick="switchMode('multiple-choice', this)">Multiple Choice</button>
+        <button class="mode-btn" onclick="switchMode('identification', this)">Identification</button>
+    </div>
 
-<div class="card-controls">
-<button onclick="previousCard()" class="btn">Previous</button>
-<span id="card-counter"></span>
-<button onclick="nextCard()" class="btn">Next</button>
-</div>
-</div>
+    <!-- FLASHCARD -->
+    <div id="flashcards-mode" class="study-mode active">
+        <div class="card-container">
+            <div class="flashcard" onclick="flipCard()">
+                <div class="card-front">
+                    <h3 id="question-display"></h3>
+                </div>
+                <div class="card-back">
+                    <h3 id="answer-display"></h3>
+                </div>
+            </div>
+        </div>
 
-<!-- MULTIPLE CHOICE -->
-<div id="multiple-choice-mode" class="study-mode">
-<div class="question-box">
-<h3 id="mc-question"></h3>
-<div id="mc-options"></div>
-<div id="mc-feedback" class="feedback"></div>
-<button onclick="checkMCAnswer()" class="btn primary">Submit</button>
-<button onclick="nextCard()" class="btn">Next</button>
-</div>
-</div>
+        <div class="card-controls">
+            <button onclick="previousCard()" class="btn">Previous</button>
+            <span id="card-counter"></span>
+            <button onclick="nextCard()" class="btn">Next</button>
+        </div>
+    </div>
 
-<!-- IDENTIFICATION -->
-<div id="identification-mode" class="study-mode">
-<div class="question-box">
-<h3 id="id-question"></h3>
-<input type="text" id="id-answer" placeholder="Type your answer">
-<div id="id-feedback" class="feedback"></div>
-<button onclick="checkIDAnswer()" class="btn primary">Submit</button>
-<button onclick="nextCard()" class="btn">Next</button>
-</div>
-</div>
+    <!-- MULTIPLE CHOICE -->
+    <div id="multiple-choice-mode" class="study-mode">
+        <div class="question-box">
+            <h3 id="mc-question"></h3>
+            <div id="mc-options"></div>
+            <div id="mc-feedback" class="feedback"></div>
+            <button onclick="checkMCAnswer()" class="btn primary">Submit</button>
+            <button onclick="nextCard()" class="btn">Next</button>
+        </div>
+    </div>
 
-<!-- CONTROLS -->
-<div class="data-management">
-<button onclick="addNewCard()" class="btn primary">➕ Add Question</button>
-<button onclick="deleteCurrentCard()" class="btn danger">🗑 Delete</button>
-<button onclick="resetProgress()" class="btn secondary">Reset</button>
-</div>
+    <!-- IDENTIFICATION -->
+    <div id="identification-mode" class="study-mode">
+        <div class="question-box">
+            <h3 id="id-question"></h3>
+            <input type="text" id="id-answer" placeholder="Type your answer">
+            <div id="id-feedback" class="feedback"></div>
+            <button onclick="checkIDAnswer()" class="btn primary">Submit</button>
+            <button onclick="nextCard()" class="btn">Next</button>
+        </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="data-management">
+        <button onclick="addNewCard()" class="btn primary">➕ Add Question</button>
+        <button onclick="deleteCurrentCard()" class="btn danger">🗑 Delete</button>
+        <button onclick="undoLastAction()" class="btn secondary">↩️ Undo</button>
+        <button onclick="resetProgress()" class="btn secondary">Reset</button>
+    </div>
 
 </div>
 
 <!-- MODAL -->
 <div id="card-modal" class="modal">
-<div class="modal-content">
-<span class="close" onclick="closeModal()">&times;</span>
-<h3>Add Question</h3>
-<input type="text" id="edit-question" placeholder="Question">
-<input type="text" id="edit-answer" placeholder="Answer">
-<button onclick="saveCard()" class="btn primary">Save</button>
-</div>
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>Add Question</h3>
+        <input type="text" id="edit-question" placeholder="Question">
+        <input type="text" id="edit-answer" placeholder="Answer">
+        <button onclick="saveCard()" class="btn primary">Save</button>
+    </div>
 </div>
 
 <script src="script.js"></script>
