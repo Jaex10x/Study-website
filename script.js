@@ -1,19 +1,58 @@
-
+// Load data from localStorage or use defaults
 let studyData = {
-    cards: [
-        {question: "What is JavaScript?", answer: "Programming language"},
-        {question: "CSS stands for?", answer: "Cascading Style Sheets"},
-        {question: "HTML means?", answer: "Hyper Text Markup Language"}
-    ],
+    cards: [],
     currentIndex: 0,
     score: 0,
     totalAttempts: 0,
-    history: [] // Store previous states for undo
+    history: []
 };
+
+// Load from localStorage immediately when script runs
+function loadFromStorage() {
+    const saved = localStorage.getItem('studyMasterData');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            studyData.cards = parsed.cards || [];
+            studyData.score = parsed.score || 0;
+            studyData.totalAttempts = parsed.totalAttempts || 0;
+            console.log('Loaded from storage:', studyData.cards.length, 'cards');
+        } catch (e) {
+            console.error('Failed to load from storage', e);
+            setDefaultCards();
+        }
+    } else {
+        console.log('No saved data, using defaults');
+        setDefaultCards();
+    }
+}
+
+// Set default cards
+function setDefaultCards() {
+    studyData.cards = [
+        {question: "What is JavaScript?", answer: "Programming language"},
+        {question: "CSS stands for?", answer: "Cascading Style Sheets"},
+        {question: "HTML means?", answer: "Hyper Text Markup Language"}
+    ];
+    saveToStorage(); // Save defaults to storage
+}
+
+// Save data to localStorage
+function saveToStorage() {
+    localStorage.setItem('studyMasterData', JSON.stringify({
+        cards: studyData.cards,
+        score: studyData.score,
+        totalAttempts: studyData.totalAttempts
+    }));
+    console.log('Saved to storage:', studyData.cards.length, 'cards');
+}
+
+// Load data when page starts
+loadFromStorage();
 
 let currentMode = "flashcards";
 let selectedOption = null;
-let previousState = null; // Store previous card state
+let previousState = null;
 
 document.addEventListener("DOMContentLoaded", function() {
     updateDisplay();
@@ -109,14 +148,12 @@ function generateOptions(correct) {
 
 /* NAVIGATION */
 function nextCard() {
-    // Save current state before moving
     savePreviousState();
     studyData.currentIndex = (studyData.currentIndex + 1) % studyData.cards.length;
     updateDisplay();
 }
 
 function previousCard() {
-    // Save current state before moving
     savePreviousState();
     studyData.currentIndex = 
         (studyData.currentIndex - 1 + studyData.cards.length) % studyData.cards.length;
@@ -133,10 +170,9 @@ function savePreviousState() {
     }
 }
 
-/* UNDO LAST ACTION - GO BACK TO PREVIOUS CARD */
+/* UNDO LAST ACTION */
 function undoLastAction() {
     if (previousState) {
-        // Find the index of the previous card
         let prevIndex = studyData.cards.findIndex(card => 
             card.question === previousState.card.question && 
             card.answer === previousState.card.answer
@@ -147,7 +183,6 @@ function undoLastAction() {
             updateDisplay();
             showUndoMessage("↩️ Went back to previous card!");
         } else {
-            // If card was deleted, just go to previous index
             if (previousState.index < studyData.cards.length) {
                 studyData.currentIndex = previousState.index;
                 updateDisplay();
@@ -157,7 +192,6 @@ function undoLastAction() {
             }
         }
     } else {
-        // If no previous state, just go to previous card
         previousCard();
         showUndoMessage("↩️ Went to previous card!");
     }
@@ -199,6 +233,7 @@ function checkMCAnswer() {
     
     studyData.totalAttempts++;
     updateScore();
+    saveToStorage(); // Save after scoring
 }
 
 function checkIDAnswer() {
@@ -223,6 +258,7 @@ function checkIDAnswer() {
     
     studyData.totalAttempts++;
     updateScore();
+    saveToStorage(); // Save after scoring
 }
 
 /* SCORE FUNCTIONS */
@@ -252,6 +288,7 @@ function closeModal() {
     document.getElementById("card-modal").style.display = "none";
 }
 
+/* FIXED: Save card and persist to storage */
 function saveCard() {
     let q = document.getElementById("edit-question").value;
     let a = document.getElementById("edit-answer").value;
@@ -261,37 +298,126 @@ function saveCard() {
         return;
     }
     
+    // Add new card
     studyData.cards.push({question: q, answer: a});
+    
+    // CRITICAL: Save to localStorage immediately
+    saveToStorage();
+    
     closeModal();
     updateDisplay();
     showUndoMessage("➕ Question added!");
+    
+    console.log('Card added. Total cards:', studyData.cards.length);
 }
 
-/* DELETE */
+/* FIXED: Delete card and persist to storage */
 function deleteCurrentCard() {
     if (studyData.cards.length === 0) return;
     
-    // Save current state before deleting
     savePreviousState();
     
+    // Remove current card
     studyData.cards.splice(studyData.currentIndex, 1);
     
+    // Adjust index if needed
     if (studyData.cards.length > 0) {
         studyData.currentIndex = Math.min(studyData.currentIndex, studyData.cards.length - 1);
     } else {
         studyData.currentIndex = 0;
     }
     
+    // CRITICAL: Save to localStorage immediately
+    saveToStorage();
+    
     updateDisplay();
     showUndoMessage("🗑️ Card deleted!");
+    
+    console.log('Card deleted. Total cards:', studyData.cards.length);
 }
 
+/* FIXED: Reset progress but keep cards */
 function resetProgress() {
     studyData.currentIndex = 0;
     studyData.score = 0;
     studyData.totalAttempts = 0;
-    previousState = null; // Clear previous state on reset
+    previousState = null;
+    
+    // Save to localStorage
+    saveToStorage();
+    
     updateDisplay();
     updateScore();
     showUndoMessage("🔄 Progress reset!");
 }
+
+/* NEW: Clear all cards (optional) */
+function clearAllCards() {
+    if (confirm('Are you sure you want to delete ALL cards?')) {
+        studyData.cards = [];
+        studyData.currentIndex = 0;
+        studyData.score = 0;
+        studyData.totalAttempts = 0;
+        
+        // Save to localStorage
+        saveToStorage();
+        
+        updateDisplay();
+        updateScore();
+        showUndoMessage("🗑️ All cards deleted!");
+    }
+}
+
+/* NEW: Export cards to file (backup) */
+function exportCards() {
+    const dataStr = JSON.stringify(studyData.cards, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'study-cards-backup.json';
+    
+    let linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+}
+
+/* NEW: Import cards from file */
+function importCards() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = event => {
+            try {
+                const importedCards = JSON.parse(event.target.result);
+                if (Array.isArray(importedCards)) {
+                    studyData.cards = importedCards;
+                    studyData.currentIndex = 0;
+                    saveToStorage();
+                    updateDisplay();
+                    showUndoMessage("📥 Cards imported!");
+                } else {
+                    alert('Invalid file format');
+                }
+            } catch (error) {
+                alert('Error importing file');
+            }
+        };
+        
+        reader.readAsText(file);
+    };
+    
+    input.click();
+}
+
+// Save before page unload
+window.addEventListener('beforeunload', function() {
+    saveToStorage();
+});
+
+// Check storage on load
+console.log('Initial cards:', studyData.cards.length);
