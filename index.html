@@ -1,108 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Master - Interactive Learning</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Master</title>
+<link rel="stylesheet" href="style.css">
 </head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>📚 Study Master</h1>
-            <div class="progress-bar">
-                <div class="progress" id="progress"></div>
-            </div>
-        </header>
+<div class="container">
 
-        <div class="study-mode-selector">
-            <button class="mode-btn active" onclick="switchMode('flashcards')">Flashcards</button>
-            <button class="mode-btn" onclick="switchMode('multiple-choice')">Multiple Choice</button>
-            <button class="mode-btn" onclick="switchMode('identification')">Identification</button>
-        </div>
+<header>
+<h1>📚 Study Master</h1>
+<div class="progress-bar">
+<div class="progress" id="progress"></div>
+</div>
+</header>
 
-        <!-- Flashcard Mode -->
-        <div id="flashcard-mode" class="study-mode active">
-            <div class="card-container">
-                <div class="flashcard" onclick="flipCard()">
-                    <div class="card-front">
-                        <h3 id="question-display">Question appears here</h3>
-                    </div>
-                    <div class="card-back">
-                        <h3 id="answer-display">Answer appears here</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="card-controls">
-                <button onclick="previousCard()" class="btn">Previous</button>
-                <span id="card-counter">1 / 1</span>
-                <button onclick="nextCard()" class="btn">Next</button>
-            </div>
-        </div>
-
-        <!-- Multiple Choice Mode -->
-        <div id="multiple-choice-mode" class="study-mode">
-            <div class="question-box">
-                <h3 id="mc-question">Question will appear here</h3>
-                <div id="mc-options" class="options-container">
-                    <!-- Options will be dynamically added here -->
-                </div>
-                <div class="feedback" id="mc-feedback"></div>
-                <button onclick="checkMCAnswer()" class="btn submit-btn">Submit Answer</button>
-                <button onclick="nextMCQuestion()" class="btn next-btn">Next Question</button>
-            </div>
-        </div>
-
-        <!-- Identification Mode -->
-        <div id="identification-mode" class="study-mode">
-            <div class="question-box">
-                <h3 id="id-question">Question will appear here</h3>
-                <input type="text" id="id-answer" placeholder="Type your answer here...">
-                <div class="feedback" id="id-feedback"></div>
-                <button onclick="checkIDAnswer()" class="btn submit-btn">Submit Answer</button>
-                <button onclick="nextIDQuestion()" class="btn next-btn">Next Question</button>
-            </div>
-        </div>
-
-        <!-- Data Management Section -->
-        <div class="data-management">
-    <h3>📊 Study Set Management</h3>
-    <div class="data-controls">
-        <div class="import-export">
-            <button onclick="exportData()" class="btn secondary">Export JSON</button>
-            <button onclick="exportToPDF()" class="btn secondary">📄 Export PDF</button>
-            <input type="file" id="import-file" accept=".json" style="display: none;">
-            <input type="file" id="import-pdf-file" accept=".pdf" style="display: none;">
-            <button onclick="document.getElementById('import-file').click()" class="btn secondary">Import JSON</button>
-            <button onclick="document.getElementById('import-pdf-file').click()" class="btn secondary">📄 Import PDF</button>
-        </div>
-        <button onclick="addNewCard()" class="btn primary">➕ Add New Card</button>
-        <button onclick="toggleCardList()" class="btn secondary">📋 Manage Cards</button>
-        <button onclick="undoCard()" class="btn warning">↩️ Undo</button>
-        <button onclick="resetProgress()" class="btn warning">Reset Progress</button>
-    </div>
+<div class="study-mode-selector">
+<button class="mode-btn active" onclick="switchMode('flashcards')">Flashcards</button>
+<button class="mode-btn" onclick="switchMode('multiple-choice')">Multiple Choice</button>
+<button class="mode-btn" onclick="switchMode('identification')">Identification</button>
 </div>
 
-    <!-- Add/Edit Card Modal -->
-    <div id="card-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h3>Add/Edit Card</h3>
-            <input type="text" id="edit-question" placeholder="Enter question">
-            <input type="text" id="edit-answer" placeholder="Enter answer">
-            <select id="edit-type">
-                <option value="flashcard">Flashcard</option>
-                <option value="multiple-choice">Multiple Choice</option>
-                <option value="identification">Identification</option>
-            </select>
-            <div id="mc-options-edit" style="display: none;">
-                <h4>Multiple Choice Options (comma-separated)</h4>
-                <input type="text" id="edit-options" placeholder="Option1, Option2, Option3, Option4">
-            </div>
-            <button onclick="saveCard()" class="btn primary">Save Card</button>
-        </div>
-    </div>
-    <script src="script.js"></script>
+<!-- FLASHCARD -->
+<div id="flashcards-mode" class="study-mode active">
+<div class="card-container">
+<div class="flashcard" onclick="flipCard()">
+<div class="card-front">
+<h3 id="question-display"></h3>
+</div>
+<div class="card-back">
+<h3 id="answer-display"></h3>
+</div>
+</div>
+</div>
+<div class="card-controls">
+<button onclick="previousCard()" class="btn">Previous</button>
+<span id="card-counter"></span>
+<button onclick="nextCard()" class="btn">Next</button>
+</div>
+</div>
+
+<!-- MULTIPLE CHOICE -->
+<div id="multiple-choice-mode" class="study-mode">
+<div class="question-box">
+<h3 id="mc-question"></h3>
+<div id="mc-options"></div>
+<div id="mc-feedback" class="feedback"></div>
+<button onclick="checkMCAnswer()" class="btn">Submit</button>
+<button onclick="nextCard()" class="btn">Next</button>
+</div>
+</div>
+
+<!-- IDENTIFICATION -->
+<div id="identification-mode" class="study-mode">
+<div class="question-box">
+<h3 id="id-question"></h3>
+<input type="text" id="id-answer">
+<div id="id-feedback" class="feedback"></div>
+<button onclick="checkIDAnswer()" class="btn">Submit</button>
+<button onclick="nextCard()" class="btn">Next</button>
+</div>
+</div>
+
+<!-- CONTROLS -->
+<div class="data-management">
+<button onclick="addNewCard()" class="btn primary">➕ Add New Card</button>
+<button onclick="resetProgress()" class="btn warning">Reset</button>
+<button onclick="deleteCurrentCard()" class="btn warning">🗑 Delete Card</button>
+
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="card-modal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal()">&times;</span>
+<h3>Add Card</h3>
+<input type="text" id="edit-question" placeholder="Question">
+<input type="text" id="edit-answer" placeholder="Answer">
+<select id="edit-type">
+<option value="flashcards">Flashcard</option>
+<option value="multiple-choice">Multiple Choice</option>
+<option value="identification">Identification</option>
+</select>
+<div id="mc-options-edit" style="display:none;">
+<input type="text" id="edit-options" placeholder="Option1, Option2, Option3">
+</div>
+<button onclick="saveCard()" class="btn primary">Save</button>
+</div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
